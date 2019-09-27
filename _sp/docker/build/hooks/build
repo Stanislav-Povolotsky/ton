@@ -1,4 +1,4 @@
 #!/bin/bash
 
 echo "Build hook activated. Pwd: `pwd`; Files: `ls`; Available ENV: `env`" 1>&2
-docker build -t $IMAGE_NAME . --build-arg EX_BUILD_ARGS=$EX_BUILD_ARGS
+docker build --build-arg EX_BUILD_ARGS=$EX_BUILD_ARGS -t $IMAGE_NAME . 
