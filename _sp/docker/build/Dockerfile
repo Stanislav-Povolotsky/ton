@@ -16,6 +16,7 @@ COPY \
 WORKDIR /var/ton/
 
 RUN \
+    chmod +x /var/ton/src/_sp/docker/build/build.all.sh && \
     /var/ton/src/_sp/docker/build/build.all.sh
 
 # ---------------------------------------------------------------------
