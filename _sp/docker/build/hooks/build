@@ -1,4 +1,7 @@
 #!/bin/bash
+CUR_PATH=`dirname $0`
+CUR_PATH=`realpath $CUR_PATH`
+SRC_PATH=`realpath $CUR_PATH/../../../..`
 
-echo "Build hook activated. Pwd: `pwd`; Files: `ls`; Available ENV: `env`" 1>&2
-docker build --build-arg EX_BUILD_ARGS=$EX_BUILD_ARGS -t $IMAGE_NAME . 
+echo "Build hook activated. CurDir: `pwd`; ScriptPath: $CUR_PATH; SourcesPath: $SRC_PATH" 1>&2
+docker build --build-arg EX_BUILD_ARGS=$EX_BUILD_ARGS -t $IMAGE_NAME -f $SRC_PATH/_sp/docker/build/Dockerfile $SRC_PATH
