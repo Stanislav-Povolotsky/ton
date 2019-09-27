@@ -9,7 +9,7 @@ touch /var/ton/src/tonlib/TonlibConfig.cmake
 BUILD_STATUS=1
 
 while true; do
-  cmake -G "Ninja" -DCMAKE_INSTALL_PREFIX:PATH=/var/ton --build /var/ton/src
+  cmake -G "Ninja" $EX_BUILD_ARGS -DCMAKE_INSTALL_PREFIX:PATH=/var/ton --build /var/ton/src
   if [ $? -ne 0 ]; then echo "cmake error"; break; fi
 
   ninja
