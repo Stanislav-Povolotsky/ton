@@ -25,6 +25,7 @@ while true; do
   #rm /var/ton/bin/test-*
 
   cp -r /var/ton/src/_sp/etc /var/ton/src/_sp/run /var/ton/
+  chmod +x /var/ton/run/*
 
   # Removing unnecessary files
   rm -rf /var/ton/src/.git >/dev/null 2>&1
