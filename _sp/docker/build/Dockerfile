@@ -18,7 +18,7 @@ WORKDIR /var/ton/
 ARG EX_BUILD_ARGS
 
 RUN \
-    export EX_BUILD_ARGS=${EX_BUILD_ARGS} && \
+    export EX_BUILD_ARGS="${EX_BUILD_ARGS}" && \
     echo Using additional build arguments: ${EX_BUILD_ARGS} 1>&2 && \
     chmod +x /var/ton/src/_sp/docker/build/build.all.sh && \
     /var/ton/src/_sp/docker/build/build.all.sh
