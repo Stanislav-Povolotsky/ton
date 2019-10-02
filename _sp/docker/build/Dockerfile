@@ -1,4 +1,4 @@
-﻿# Dockerfile by Stanislav Povolotsky (stas.dev<AT>povolotsky.info)
+# Dockerfile by Stanislav Povolotsky (stas.dev<AT>povolotsky.info)
 
 # ---------------------------------------------------------------------
 # Builder
@@ -16,11 +16,10 @@ COPY \
 WORKDIR /var/ton/
 
 ARG EX_BUILD_ARGS
-RUN \
-    export EX_BUILD_ARGS=${EX_BUILD_ARGS} && \
-    echo Using additional build arguments: ${EX_BUILD_ARGS} 1>&2
 
 RUN \
+    export EX_BUILD_ARGS=${EX_BUILD_ARGS} && \
+    echo Using additional build arguments: ${EX_BUILD_ARGS} 1>&2 \
     chmod +x /var/ton/src/_sp/docker/build/build.all.sh && \
     /var/ton/src/_sp/docker/build/build.all.sh
 
@@ -36,6 +35,8 @@ RUN \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /var/ton/bin
+ENV PATH="${PATH}:/var/ton/bin"
+ENV FIFTPATH="/var/ton/src/crypto/fift/lib/"
 
 COPY --from=build-env /var/ton /var/ton
 
