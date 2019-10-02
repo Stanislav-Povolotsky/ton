@@ -21,9 +21,9 @@ while true; do
   ninja install
   if [ $? -ne 0 ]; then echo "ninja installation error"; break; fi
 
-  # Copy binaries
+  # Move binaries
   for i in $(find  -executable -type f); do
-    cp $i /var/ton/bin/
+    mv $i /var/ton/bin/
   done
   rm /var/ton/bin/a.out /var/ton/bin/CMAKE* /var/ton/bin/CMake* 
   #rm /var/ton/bin/test-*
@@ -33,22 +33,23 @@ while true; do
   mkdir -p /var/ton/src/crypto/fift/lib
   cp /var/ton/src-all/crypto/fift/lib/* /var/ton/src/crypto/fift/lib/
   mkdir -p /var/ton/src/crypto/smartcont
-  cp /var/ton/src/crypto/smartcont/* /var/ton/src/crypto/smartcont/
+  cp /var/ton/src-all/crypto/smartcont/* /var/ton/src/crypto/smartcont/
   mkdir -p /var/ton/src/crypto/test/fift
-  cp /var/ton/src/crypto/test/fift* /var/ton/src/crypto/test/fift/
+  cp /var/ton/src-all/crypto/test/fift* /var/ton/src/crypto/test/fift/
 
-  # Archiving sources
-  pushd /var/ton/src-all/
-  tar -cvzf /var/ton/src/src.tar.gz ./
-  popd
-  rm -rf /var/ton/src-all/ >/dev/null 2>&1
-
-  cp -r /var/ton/src/_sp/etc /var/ton/src/_sp/run /var/ton/
+  # Copy "etc" and "run" folders
+  cp -r /var/ton/src-all/_sp/etc /var/ton/src-all/_sp/run /var/ton/
   chmod +x /var/ton/run/*
 
   # Removing unnecessary files
-  rm -rf /var/ton/src/.git >/dev/null 2>&1
-  rm -rf /var/ton/src/_sp >/dev/null 2>&1
+  rm -rf /var/ton/src-all/.git >/dev/null 2>&1
+  rm -rf /var/ton/src-all/_sp >/dev/null 2>&1
+
+  # Archiving sources
+  pushd /var/ton/src-all/
+  tar -cvzf /var/ton/src/src.tar.gz .
+  popd
+  rm -rf /var/ton/src-all/ >/dev/null 2>&1
 
 
   BUILD_STATUS=0
