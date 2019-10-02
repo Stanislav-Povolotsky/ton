@@ -1,15 +1,21 @@
+#!/bin/bash
 # Build script by Stanislav Povolotsky (stas.dev<AT>povolotsky.info)
+
+OPT_SAVE_SOURCES_ARCHIVE=0
+
 mkdir /tmp/ton-build
 mkdir /var/ton/
 mkdir /var/ton/bin
 mkdir /var/ton/etc
-mkdir /var/ton/crypto
 
 touch /var/ton/src/tonlib/TonlibConfig.cmake
 
 # Archiving sources
-cd /ton/src/
-tar -cvzf /tmp/src.tar.gz .
+if [[ $OPT_SAVE_SOURCES_ARCHIVE != 0 ]]
+then
+	cd /var/ton/src/
+	tar -cvzf /tmp/src.tar.gz .
+fi
 
 # Building in this directory
 cd /tmp/ton-build
@@ -17,6 +23,7 @@ cd /tmp/ton-build
 BUILD_STATUS=1
 
 while true; do
+  EX_BUILD_ARGS="-D \"CMAKE_CXX_FLAGS=-mtune=generic -march=x86_64\""
   echo Build args: $EX_BUILD_ARGS 1>&2
 
   cmake -G "Ninja" $EX_BUILD_ARGS -DCMAKE_INSTALL_PREFIX:PATH=/var/ton --build /var/ton/src
@@ -53,8 +60,11 @@ while true; do
   rm -rf /var/ton/src-all/_sp >/dev/null 2>&1
 
   # Saving sources archive
-  cp /tmp/src.tar.gz /var/ton/src/
-  rm -rf /var/ton/src-all/ >/dev/null 2>&1
+  if [[ $OPT_SAVE_SOURCES_ARCHIVE != 0 ]]
+  then
+      cp /tmp/src.tar.gz /var/ton/src/
+      rm -rf /var/ton/src-all/ >/dev/null 2>&1
+  fi
 
 
   BUILD_STATUS=0
