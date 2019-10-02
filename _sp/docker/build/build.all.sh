@@ -1,12 +1,19 @@
 # Build script by Stanislav Povolotsky (stas.dev<AT>povolotsky.info)
 mkdir /tmp/ton-build
-cd /tmp/ton-build
 mkdir /var/ton/
 mkdir /var/ton/bin
 mkdir /var/ton/etc
 mkdir /var/ton/crypto
 
 touch /var/ton/src/tonlib/TonlibConfig.cmake
+
+# Archiving sources
+cd /ton/src/
+tar -cvzf /tmp/src.tar.gz .
+
+# Building in this directory
+cd /tmp/ton-build
+
 BUILD_STATUS=1
 
 while true; do
@@ -45,10 +52,8 @@ while true; do
   rm -rf /var/ton/src-all/.git >/dev/null 2>&1
   rm -rf /var/ton/src-all/_sp >/dev/null 2>&1
 
-  # Archiving sources
-  pushd /var/ton/src-all/
-  tar -cvzf /var/ton/src/src.tar.gz .
-  popd
+  # Saving sources archive
+  cp /tmp/src.tar.gz /var/ton/src/
   rm -rf /var/ton/src-all/ >/dev/null 2>&1
 
 
