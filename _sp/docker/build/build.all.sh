@@ -23,10 +23,10 @@ cd /tmp/ton-build
 BUILD_STATUS=1
 
 while true; do
-  EX_BUILD_ARGS="-D \"CMAKE_CXX_FLAGS=-mtune=generic -march=x86_64\""
+  EX_BUILD_ARGS="-DCMAKE_CXX_FLAGS=-mtune=generic -march=x86_64"
   echo Build args: $EX_BUILD_ARGS 1>&2
 
-  cmake -G "Ninja" $EX_BUILD_ARGS -DCMAKE_INSTALL_PREFIX:PATH=/var/ton --build /var/ton/src
+  cmake -G "Ninja" "$EX_BUILD_ARGS" -DCMAKE_INSTALL_PREFIX:PATH=/var/ton --build /var/ton/src
   if [ $? -ne 0 ]; then echo "cmake error"; break; fi
 
   ninja
