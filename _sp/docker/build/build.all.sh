@@ -57,12 +57,12 @@ while true; do
 
   # Copy required sources
   mv $SOURCES_FOLDER $SOURCES_FOLDER-all
-  mkdir -p $SOURCES_FOLDER/crypto/fift/lib
-  cp $SOURCES_FOLDER-all/crypto/fift/lib/* $SOURCES_FOLDER/crypto/fift/lib/
-  mkdir -p $SOURCES_FOLDER/crypto/smartcont
-  cp $SOURCES_FOLDER-all/crypto/smartcont/* $SOURCES_FOLDER/crypto/smartcont/
-  mkdir -p $SOURCES_FOLDER/crypto/test/fift
-  cp $SOURCES_FOLDER-all/crypto/test/fift/* $SOURCES_FOLDER/crypto/test/fift/
+  
+  DIR_TO_SAVE="crypto/fift/lib crypto/smartcont crypto/test/fift crypto/func/test"
+  for dir_to_save in $DIR_TO_SAVE; do
+      mkdir -p $SOURCES_FOLDER/$dir_to_save
+      cp -r $SOURCES_FOLDER-all/$dir_to_save/* $SOURCES_FOLDER/$dir_to_save/
+  done
 
   # Copy "etc" and "run" folders
   cp -r $SOURCES_FOLDER-all/_sp/etc $SOURCES_FOLDER-all/_sp/run /var/ton/
@@ -76,9 +76,9 @@ while true; do
   if [[ $OPT_SAVE_SOURCES_ARCHIVE != 0 ]]
   then
       cp /tmp/src.tar.gz $SOURCES_FOLDER/
-      rm -rf $SOURCES_FOLDER-all/ >/dev/null 2>&1
   fi
-
+  # Removing sources to save space
+  rm -rf $SOURCES_FOLDER-all/ >/dev/null 2>&1
 
   BUILD_STATUS=0
   break
