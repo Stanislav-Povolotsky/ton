@@ -104,16 +104,22 @@ void ValidatorManagerMasterchainReiniter::downloaded_proof_link(td::BufferSlice 
     return;
   }
 
-  auto P = td::PromiseCreator::lambda([SelfId = actor_id(this)](td::Result<BlockHandle> R) {
+  auto proof_link = pp.move_as_ok();
+
+  auto P = td::PromiseCreator::lambda([SelfId = actor_id(this), db = db_, proof_link](td::Result<BlockHandle> R) {
     if (R.is_error()) {
       LOG(WARNING) << "downloaded proof link failed: " << R.move_as_error();
       td::actor::send_closure(SelfId, &ValidatorManagerMasterchainReiniter::download_proof_link);
     } else {
-      td::actor::send_closure(SelfId, &ValidatorManagerMasterchainReiniter::try_download_key_blocks, false);
+      auto P = td::PromiseCreator::lambda([SelfId, handle = R.move_as_ok()](td::Result<td::Unit> R) {
+        R.ensure();
+        td::actor::send_closure(SelfId, &ValidatorManagerMasterchainReiniter::try_download_key_blocks, false);
+      });
+      td::actor::send_closure(db, &Db::add_key_block_proof_link, proof_link, std::move(P));
     }
   });
 
-  run_check_proof_link_query(handle_->id(), pp.move_as_ok(), manager_, td::Timestamp::in(60.0), std::move(P));
+  run_check_proof_link_query(handle_->id(), proof_link, manager_, td::Timestamp::in(60.0), std::move(P));
 }
 
 void ValidatorManagerMasterchainReiniter::downloaded_zero_state() {
@@ -259,6 +265,8 @@ void ValidatorManagerMasterchainReiniter::download_masterchain_state() {
 
 void ValidatorManagerMasterchainReiniter::downloaded_masterchain_state(td::Ref<ShardState> state) {
   state_ = td::Ref<MasterchainState>{std::move(state)};
+  CHECK(handle_->received_state());
+  CHECK(handle_->is_applied());
 
   auto P = td::PromiseCreator::lambda([SelfId = actor_id(this)](td::Result<td::Unit> R) {
     R.ensure();
@@ -406,7 +414,8 @@ void ValidatorManagerMasterchainStarter::got_key_block_handle(BlockHandle handle
 
 void ValidatorManagerMasterchainStarter::got_shard_block_id(BlockIdExt block_id) {
   client_block_id_ = block_id;
-  finish();
+  start_shard_client();
+  return;
 
   auto P = td::PromiseCreator::lambda([SelfId = actor_id(this)](td::Result<std::vector<BlockIdExt>> R) {
     R.ensure();
@@ -428,7 +437,7 @@ void ValidatorManagerMasterchainStarter::got_hardforks(std::vector<BlockIdExt> v
         return;
       }
     }
-    finish();
+    start_shard_client();
     return;
   }
   if (h.size() > vec.size() + 1) {
@@ -452,9 +461,9 @@ void ValidatorManagerMasterchainStarter::got_hardforks(std::vector<BlockIdExt> v
     return;
   }
 
-  auto P = td::PromiseCreator::lambda([SelfId = actor_id(this)](td::Result<BlockIdExt> R) {
+  auto P = td::PromiseCreator::lambda([SelfId = actor_id(this)](td::Result<BlockHandle> R) {
     R.ensure();
-    td::actor::send_closure(SelfId, &ValidatorManagerMasterchainStarter::got_truncate_block_id, R.move_as_ok());
+    td::actor::send_closure(SelfId, &ValidatorManagerMasterchainStarter::got_truncate_block_handle, R.move_as_ok());
   });
   td::actor::send_closure(db_, &Db::get_block_by_seqno, AccountIdPrefixFull{masterchainId, 0}, b.seqno() - 1,
                           std::move(P));
@@ -557,13 +566,20 @@ void ValidatorManagerMasterchainStarter::truncated() {
 void ValidatorManagerMasterchainStarter::written_next() {
   auto P = td::PromiseCreator::lambda([SelfId = actor_id(this)](td::Result<td::Unit> R) {
     R.ensure();
-    td::actor::send_closure(SelfId, &ValidatorManagerMasterchainStarter::finish);
+    td::actor::send_closure(SelfId, &ValidatorManagerMasterchainStarter::start_shard_client);
   });
   td::actor::send_closure(db_, &Db::update_hardforks, opts_->get_hardforks(), std::move(P));
 }
 
+void ValidatorManagerMasterchainStarter::start_shard_client() {
+  auto P = td::PromiseCreator::lambda([SelfId = actor_id(this)](td::Result<td::Unit> R) {
+    R.ensure();
+    td::actor::send_closure(SelfId, &ValidatorManagerMasterchainStarter::finish);
+  });
+  client_ = td::actor::create_actor<ShardClient>("shardclient", opts_, manager_, std::move(P));
+}
+
 void ValidatorManagerMasterchainStarter::finish() {
-  client_ = td::actor::create_actor<ShardClient>("shardclient", opts_, manager_);
   promise_.set_value(
       ValidatorManagerInitResult{handle_, state_, std::move(client_), gc_handle_, gc_state_, last_key_block_handle_});
   stop();
