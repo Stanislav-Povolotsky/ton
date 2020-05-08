@@ -14,7 +14,7 @@
     You should have received a copy of the GNU Lesser General Public License
     along with TON Blockchain Library.  If not, see <http://www.gnu.org/licenses/>.
 
-    Copyright 2017-2019 Telegram Systems LLP
+    Copyright 2017-2020 Telegram Systems LLP
 */
 #pragma once
 
@@ -31,17 +31,17 @@ class Db : public td::actor::Actor {
   virtual ~Db() = default;
 
   virtual void store_block_data(BlockHandle handle, td::Ref<BlockData> data, td::Promise<td::Unit> promise) = 0;
-  virtual void get_block_data(BlockHandle handle, td::Promise<td::Ref<BlockData>> promise) = 0;
+  virtual void get_block_data(ConstBlockHandle handle, td::Promise<td::Ref<BlockData>> promise) = 0;
 
   virtual void store_block_signatures(BlockHandle handle, td::Ref<BlockSignatureSet> data,
                                       td::Promise<td::Unit> promise) = 0;
-  virtual void get_block_signatures(BlockHandle handle, td::Promise<td::Ref<BlockSignatureSet>> promise) = 0;
+  virtual void get_block_signatures(ConstBlockHandle handle, td::Promise<td::Ref<BlockSignatureSet>> promise) = 0;
 
   virtual void store_block_proof(BlockHandle handle, td::Ref<Proof> proof, td::Promise<td::Unit> promise) = 0;
-  virtual void get_block_proof(BlockHandle handle, td::Promise<td::Ref<Proof>> promise) = 0;
+  virtual void get_block_proof(ConstBlockHandle handle, td::Promise<td::Ref<Proof>> promise) = 0;
 
   virtual void store_block_proof_link(BlockHandle handle, td::Ref<ProofLink> proof, td::Promise<td::Unit> promise) = 0;
-  virtual void get_block_proof_link(BlockHandle handle, td::Promise<td::Ref<ProofLink>> promise) = 0;
+  virtual void get_block_proof_link(ConstBlockHandle handle, td::Promise<td::Ref<ProofLink>> promise) = 0;
 
   virtual void store_block_candidate(BlockCandidate candidate, td::Promise<td::Unit> promise) = 0;
   virtual void get_block_candidate(ton::PublicKey source, BlockIdExt id, FileHash collated_data_file_hash,
@@ -49,7 +49,7 @@ class Db : public td::actor::Actor {
 
   virtual void store_block_state(BlockHandle handle, td::Ref<ShardState> state,
                                  td::Promise<td::Ref<ShardState>> promise) = 0;
-  virtual void get_block_state(BlockHandle handle, td::Promise<td::Ref<ShardState>> promise) = 0;
+  virtual void get_block_state(ConstBlockHandle handle, td::Promise<td::Ref<ShardState>> promise) = 0;
 
   virtual void store_persistent_state_file(BlockIdExt block_id, BlockIdExt masterchain_block_id, td::BufferSlice state,
                                            td::Promise<td::Unit> promise) = 0;
@@ -72,9 +72,11 @@ class Db : public td::actor::Actor {
   virtual void get_block_handle(BlockIdExt id, td::Promise<BlockHandle> promise) = 0;
 
   virtual void apply_block(BlockHandle handle, td::Promise<td::Unit> promise) = 0;
-  virtual void get_block_by_lt(AccountIdPrefixFull account, LogicalTime lt, td::Promise<BlockHandle> promise) = 0;
-  virtual void get_block_by_unix_time(AccountIdPrefixFull account, UnixTime ts, td::Promise<BlockHandle> promise) = 0;
-  virtual void get_block_by_seqno(AccountIdPrefixFull account, BlockSeqno seqno, td::Promise<BlockHandle> promise) = 0;
+  virtual void get_block_by_lt(AccountIdPrefixFull account, LogicalTime lt, td::Promise<ConstBlockHandle> promise) = 0;
+  virtual void get_block_by_unix_time(AccountIdPrefixFull account, UnixTime ts,
+                                      td::Promise<ConstBlockHandle> promise) = 0;
+  virtual void get_block_by_seqno(AccountIdPrefixFull account, BlockSeqno seqno,
+                                  td::Promise<ConstBlockHandle> promise) = 0;
 
   virtual void update_init_masterchain_block(BlockIdExt block, td::Promise<td::Unit> promise) = 0;
   virtual void get_init_masterchain_block(td::Promise<BlockIdExt> promise) = 0;
@@ -99,7 +101,7 @@ class Db : public td::actor::Actor {
 
   virtual void prepare_stats(td::Promise<std::vector<std::pair<std::string, std::string>>> promise) = 0;
 
-  virtual void truncate(td::Ref<MasterchainState> state, td::Promise<td::Unit> promise) = 0;
+  virtual void truncate(BlockSeqno seqno, ConstBlockHandle handle, td::Promise<td::Unit> promise) = 0;
 
   virtual void add_key_block_proof(td::Ref<Proof> proof, td::Promise<td::Unit> promise) = 0;
   virtual void add_key_block_proof_link(td::Ref<ProofLink> proof_link, td::Promise<td::Unit> promise) = 0;
@@ -113,7 +115,7 @@ class Db : public td::actor::Actor {
                                  td::Promise<td::BufferSlice> promise) = 0;
   virtual void set_async_mode(bool mode, td::Promise<td::Unit> promise) = 0;
 
-  virtual void run_gc(UnixTime ts) = 0;
+  virtual void run_gc(UnixTime ts, UnixTime archive_ttl) = 0;
 };
 
 }  // namespace validator

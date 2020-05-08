@@ -1,3 +1,21 @@
+/*
+    This file is part of TON Blockchain Library.
+
+    TON Blockchain Library is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation, either version 2 of the License, or
+    (at your option) any later version.
+
+    TON Blockchain Library is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with TON Blockchain Library.  If not, see <http://www.gnu.org/licenses/>.
+
+    Copyright 2019-2020 Telegram Systems LLP
+*/
 #pragma once
 
 #include "archive-slice.hpp"
@@ -5,32 +23,6 @@
 namespace ton {
 
 namespace validator {
-
-struct PackageId {
-  td::uint32 id;
-  bool key;
-  bool temp;
-
-  explicit PackageId(td::uint32 id, bool key, bool temp) : id(id), key(key), temp(temp) {
-  }
-
-  bool operator<(const PackageId &with) const {
-    return id < with.id;
-  }
-  bool operator==(const PackageId &with) const {
-    return id == with.id;
-  }
-
-  std::string path() const;
-  std::string name() const;
-
-  bool is_empty() {
-    return id == std::numeric_limits<td::uint32>::max();
-  }
-  static PackageId empty(bool key, bool temp) {
-    return PackageId(std::numeric_limits<td::uint32>::max(), key, temp);
-  }
-};
 
 class RootDb;
 
@@ -48,7 +40,7 @@ class ArchiveManager : public td::actor::Actor {
   void get_key_block_proof(FileReference ref_id, td::Promise<td::BufferSlice> promise);
   void get_temp_file_short(FileReference ref_id, td::Promise<td::BufferSlice> promise);
   void get_file_short(FileReference ref_id, td::Promise<td::BufferSlice> promise);
-  void get_file(BlockHandle handle, FileReference ref_id, td::Promise<td::BufferSlice> promise);
+  void get_file(ConstBlockHandle handle, FileReference ref_id, td::Promise<td::BufferSlice> promise);
 
   void add_zero_state(BlockIdExt block_id, td::BufferSlice data, td::Promise<td::Unit> promise);
   void add_persistent_state(BlockIdExt block_id, BlockIdExt masterchain_block_id, td::BufferSlice data,
@@ -60,12 +52,15 @@ class ArchiveManager : public td::actor::Actor {
   void check_persistent_state(BlockIdExt block_id, BlockIdExt masterchain_block_id, td::Promise<bool> promise);
   void check_zero_state(BlockIdExt block_id, td::Promise<bool> promise);
 
-  void run_gc(UnixTime ts);
+  void truncate(BlockSeqno masterchain_seqno, ConstBlockHandle handle, td::Promise<td::Unit> promise);
+  //void truncate_continue(BlockSeqno masterchain_seqno, td::Promise<td::Unit> promise);
+
+  void run_gc(UnixTime ts, UnixTime archive_ttl);
 
   /* from LTDB */
-  void get_block_by_unix_time(AccountIdPrefixFull account_id, UnixTime ts, td::Promise<BlockHandle> promise);
-  void get_block_by_lt(AccountIdPrefixFull account_id, LogicalTime lt, td::Promise<BlockHandle> promise);
-  void get_block_by_seqno(AccountIdPrefixFull account_id, BlockSeqno seqno, td::Promise<BlockHandle> promise);
+  void get_block_by_unix_time(AccountIdPrefixFull account_id, UnixTime ts, td::Promise<ConstBlockHandle> promise);
+  void get_block_by_lt(AccountIdPrefixFull account_id, LogicalTime lt, td::Promise<ConstBlockHandle> promise);
+  void get_block_by_seqno(AccountIdPrefixFull account_id, BlockSeqno seqno, td::Promise<ConstBlockHandle> promise);
 
   void get_archive_id(BlockSeqno masterchain_seqno, td::Promise<td::uint64> promise);
   void get_archive_slice(td::uint64 archive_id, td::uint64 offset, td::uint32 limit,
@@ -76,6 +71,13 @@ class ArchiveManager : public td::actor::Actor {
   void begin_transaction();
   void commit_transaction();
   void set_async_mode(bool mode, td::Promise<td::Unit> promise);
+
+  static constexpr td::uint32 archive_size() {
+    return 20000;
+  }
+  static constexpr td::uint32 key_archive_size() {
+    return 200000;
+  }
 
  private:
   struct FileDescription {
@@ -102,6 +104,7 @@ class ArchiveManager : public td::actor::Actor {
   std::map<PackageId, FileDescription> files_;
   std::map<PackageId, FileDescription> key_files_;
   std::map<PackageId, FileDescription> temp_files_;
+  BlockSeqno finalized_up_to_{0};
   bool async_mode_ = false;
   bool huge_transaction_started_ = false;
   td::uint32 huge_transaction_size_ = 0;
@@ -113,8 +116,8 @@ class ArchiveManager : public td::actor::Actor {
   std::map<FileHash, FileReferenceShort> perm_states_;
 
   void load_package(PackageId seqno);
-  void delete_package(PackageId seqno);
-  void deleted_package(PackageId seqno);
+  void delete_package(PackageId seqno, td::Promise<td::Unit> promise);
+  void deleted_package(PackageId seqno, td::Promise<td::Unit> promise);
   void get_handle_cont(BlockIdExt block_id, PackageId id, td::Promise<BlockHandle> promise);
   void get_handle_finish(BlockHandle handle, td::Promise<BlockHandle> promise);
   void get_file_short_cont(FileReference ref_id, PackageId idx, td::Promise<td::BufferSlice> promise);
@@ -129,6 +132,7 @@ class ArchiveManager : public td::actor::Actor {
   FileDescription *get_file_desc_by_seqno(AccountIdPrefixFull shard, BlockSeqno seqno, bool key_block);
   FileDescription *get_file_desc_by_lt(AccountIdPrefixFull shard, LogicalTime lt, bool key_block);
   FileDescription *get_file_desc_by_unix_time(AccountIdPrefixFull shard, UnixTime ts, bool key_block);
+  FileDescription *get_next_file_desc(FileDescription *f);
   FileDescription *get_temp_file_desc_by_idx(PackageId idx);
   PackageId get_max_temp_file_desc_idx();
   PackageId get_prev_temp_file_desc_idx(PackageId id);
@@ -136,7 +140,7 @@ class ArchiveManager : public td::actor::Actor {
   void written_perm_state(FileReferenceShort id);
 
   void persistent_state_gc(FileHash last);
-  void got_gc_masterchain_handle(BlockHandle handle, FileHash hash);
+  void got_gc_masterchain_handle(ConstBlockHandle handle, FileHash hash);
 
   std::string db_root_;
 

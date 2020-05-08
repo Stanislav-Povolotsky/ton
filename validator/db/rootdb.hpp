@@ -14,7 +14,7 @@
     You should have received a copy of the GNU Lesser General Public License
     along with TON Blockchain Library.  If not, see <http://www.gnu.org/licenses/>.
 
-    Copyright 2017-2019 Telegram Systems LLP
+    Copyright 2017-2020 Telegram Systems LLP
 */
 #pragma once
 
@@ -34,24 +34,24 @@ namespace validator {
 class RootDb : public Db {
  public:
   enum class Flags : td::uint32 { f_started = 1, f_ready = 2, f_switched = 4, f_archived = 8 };
-  RootDb(td::actor::ActorId<ValidatorManager> validator_manager, std::string root_path, td::uint32 depth)
-      : validator_manager_(validator_manager), root_path_(std::move(root_path)), depth_(depth) {
+  RootDb(td::actor::ActorId<ValidatorManager> validator_manager, std::string root_path)
+      : validator_manager_(validator_manager), root_path_(std::move(root_path)) {
   }
 
   void start_up() override;
 
   void store_block_data(BlockHandle handle, td::Ref<BlockData> block, td::Promise<td::Unit> promise) override;
-  void get_block_data(BlockHandle handle, td::Promise<td::Ref<BlockData>> promise) override;
+  void get_block_data(ConstBlockHandle handle, td::Promise<td::Ref<BlockData>> promise) override;
 
   void store_block_signatures(BlockHandle handle, td::Ref<BlockSignatureSet> data,
                               td::Promise<td::Unit> promise) override;
-  void get_block_signatures(BlockHandle handle, td::Promise<td::Ref<BlockSignatureSet>> promise) override;
+  void get_block_signatures(ConstBlockHandle handle, td::Promise<td::Ref<BlockSignatureSet>> promise) override;
 
   void store_block_proof(BlockHandle handle, td::Ref<Proof> proof, td::Promise<td::Unit> promise) override;
-  void get_block_proof(BlockHandle handle, td::Promise<td::Ref<Proof>> promise) override;
+  void get_block_proof(ConstBlockHandle handle, td::Promise<td::Ref<Proof>> promise) override;
 
   void store_block_proof_link(BlockHandle handle, td::Ref<ProofLink> proof, td::Promise<td::Unit> promise) override;
-  void get_block_proof_link(BlockHandle handle, td::Promise<td::Ref<ProofLink>> promise) override;
+  void get_block_proof_link(ConstBlockHandle handle, td::Promise<td::Ref<ProofLink>> promise) override;
 
   void store_block_candidate(BlockCandidate candidate, td::Promise<td::Unit> promise) override;
   void get_block_candidate(PublicKey source, BlockIdExt id, FileHash collated_data_file_hash,
@@ -59,7 +59,7 @@ class RootDb : public Db {
 
   void store_block_state(BlockHandle handle, td::Ref<ShardState> state,
                          td::Promise<td::Ref<ShardState>> promise) override;
-  void get_block_state(BlockHandle handle, td::Promise<td::Ref<ShardState>> promise) override;
+  void get_block_state(ConstBlockHandle handle, td::Promise<td::Ref<ShardState>> promise) override;
 
   void store_block_handle(BlockHandle handle, td::Promise<td::Unit> promise) override;
   void get_block_handle(BlockIdExt id, td::Promise<BlockHandle> promise) override;
@@ -82,9 +82,10 @@ class RootDb : public Db {
   void try_get_static_file(FileHash file_hash, td::Promise<td::BufferSlice> promise) override;
 
   void apply_block(BlockHandle handle, td::Promise<td::Unit> promise) override;
-  void get_block_by_lt(AccountIdPrefixFull account, LogicalTime lt, td::Promise<BlockHandle> promise) override;
-  void get_block_by_unix_time(AccountIdPrefixFull account, UnixTime ts, td::Promise<BlockHandle> promise) override;
-  void get_block_by_seqno(AccountIdPrefixFull account, BlockSeqno seqno, td::Promise<BlockHandle> promise) override;
+  void get_block_by_lt(AccountIdPrefixFull account, LogicalTime lt, td::Promise<ConstBlockHandle> promise) override;
+  void get_block_by_unix_time(AccountIdPrefixFull account, UnixTime ts, td::Promise<ConstBlockHandle> promise) override;
+  void get_block_by_seqno(AccountIdPrefixFull account, BlockSeqno seqno,
+                          td::Promise<ConstBlockHandle> promise) override;
 
   void update_init_masterchain_block(BlockIdExt block, td::Promise<td::Unit> promise) override;
   void get_init_masterchain_block(td::Promise<BlockIdExt> promise) override;
@@ -113,7 +114,7 @@ class RootDb : public Db {
 
   void prepare_stats(td::Promise<std::vector<std::pair<std::string, std::string>>> promise) override;
 
-  void truncate(td::Ref<MasterchainState> state, td::Promise<td::Unit> promise) override;
+  void truncate(BlockSeqno seqno, ConstBlockHandle handle, td::Promise<td::Unit> promise) override;
 
   void add_key_block_proof(td::Ref<Proof> proof, td::Promise<td::Unit> promise) override;
   void add_key_block_proof_link(td::Ref<ProofLink> proof_link, td::Promise<td::Unit> promise) override;
@@ -127,13 +128,12 @@ class RootDb : public Db {
                          td::Promise<td::BufferSlice> promise) override;
   void set_async_mode(bool mode, td::Promise<td::Unit> promise) override;
 
-  void run_gc(UnixTime ts) override;
+  void run_gc(UnixTime ts, UnixTime archive_ttl) override;
 
  private:
   td::actor::ActorId<ValidatorManager> validator_manager_;
 
   std::string root_path_;
-  td::uint32 depth_;
 
   td::actor::ActorOwn<CellDb> cell_db_;
   td::actor::ActorOwn<StateDb> state_db_;

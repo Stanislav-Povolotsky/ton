@@ -115,6 +115,7 @@ if (TON_USE_ROCKSDB)
   if (ANDROID) 
     set(PORTABLE ON CACHE BOOL "portable")
   endif()
+  set(WITH_GFLAGS OFF CACHE BOOL "build with GFlags")
   set(WITH_TESTS OFF CACHE BOOL "build with tests")
   set(WITH_TOOLS OFF CACHE BOOL "build with tools")
   set(FAIL_ON_WARNINGS OFF CACHE BOOL "fail on warnings")
@@ -231,7 +232,7 @@ elseif (CLANG OR GCC)
   if (APPLE)
     #use "-Wl,-exported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/export_list" for exported symbols
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fvisibility=hidden -Wl,-dead_strip,-x,-S")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fvisibility=hidden -Wl,-dead_strip,-x,-S")
+    #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fvisibility=hidden -Wl,-dead_strip,-x,-S")
   else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffunction-sections -fdata-sections")
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--gc-sections -Wl,--exclude-libs,ALL")
@@ -254,6 +255,18 @@ endif()
 if (NOT ANDROID) # _FILE_OFFSET_BITS is broken in ndk r15 and r15b and doesn't work prior to Android 7.0
   add_definitions(-D_FILE_OFFSET_BITS=64)
 endif()
+
+set(INTERNAL_COMPILE "0")
+#BEGIN internal
+  add_definitions(-D_INTERNAL_COMPILE=1)
+  set(INTERNAL_COMPILE "1")
+#END internal
+
+set(TONLIB_COMPILE "0")
+#BEGIN tonlib
+  add_definitions(-D_TONLIB_COMPILE=1)
+  set(TONLIB_COMPILE "1")
+#END tonlib
 
 include(AddCXXCompilerFlag)
 if (MSVC)
@@ -323,6 +336,7 @@ if (LATEX_FOUND)
   add_latex_document(doc/tvm.tex TARGET_NAME ton_vm_description)
   add_latex_document(doc/tblkch.tex TARGET_NAME ton_blockchain_description)
   add_latex_document(doc/fiftbase.tex TARGET_NAME fift_basic_description)
+  add_latex_document(doc/catchain.tex TARGET_NAME catchain_consensus_description)
 endif()
 #END internal
 
@@ -372,8 +386,11 @@ add_subdirectory(validator)
 add_subdirectory(blockchain-explorer)
 add_subdirectory(validator-engine)
 add_subdirectory(validator-engine-console)
+add_subdirectory(create-hardfork)
 add_subdirectory(dht-server)
 add_subdirectory(utils)
+add_subdirectory(http)
+add_subdirectory(rldp-http-proxy)
 endif()
 #END internal
 
@@ -430,6 +447,9 @@ if (NOT TON_ONLY_TONLIB)
 add_executable(test-db test/test-td-main.cpp ${TONDB_TEST_SOURCE})
 target_link_libraries(test-db PRIVATE ton_db memprof)
 
+add_executable(test-rocksdb test/test-rocksdb.cpp)
+target_link_libraries(test-rocksdb PRIVATE memprof tddb tdutils)
+
 add_executable(test-tddb test/test-td-main.cpp ${TDDB_TEST_SOURCE})
 target_link_libraries(test-tddb PRIVATE tdutils tddb ${CMAKE_THREAD_LIBS_INIT} memprof)
 
@@ -441,7 +461,7 @@ if (USE_LIBRAPTORQ)
 endif()
 
 add_executable(test-hello-world test/test-hello-world.cpp )
-target_link_libraries(test-hello-world tl_api crypto ton_crypto)
+target_link_libraries(test-hello-world tl_api ton_crypto)
 
 add_executable(test-adnl test/test-adnl.cpp)
 target_link_libraries(test-adnl adnl adnltest dht tl_api)
@@ -472,6 +492,9 @@ target_link_libraries(test-ton-collator overlay tdutils tdactor adnl tl_api dht
 #target_link_libraries(test-ext-server tdutils tdactor adnl tl_api dht )
 #add_executable(test-ext-client test/test-ext-client.cpp)
 #target_link_libraries(test-ext-client tdutils tdactor adnl tl_api tl-lite-utils)
+
+add_executable(test-http test/test-http.cpp)
+target_link_libraries(test-http PRIVATE tonhttp)
 
 get_directory_property(HAS_PARENT PARENT_DIRECTORY)
 if (HAS_PARENT)
@@ -510,6 +533,12 @@ add_test(test-tonlib-offline test-tonlib-offline)
 
 #BEGIN internal
 if (NOT TON_ONLY_TONLIB)
+add_test(test-adnl test-adnl)
+add_test(test-dht test-dht)
+add_test(test-rldp test-rldp)
+#add_test(test-validator-session-state test-validator-session-state)
+add_test(test-catchain test-catchain)
+
 add_test(test-fec test-fec)
 add_test(test-tddb test-tddb ${TEST_OPTIONS})
 add_test(test-db test-db ${TEST_OPTIONS})

@@ -14,7 +14,7 @@
     You should have received a copy of the GNU Lesser General Public License
     along with TON Blockchain Library.  If not, see <http://www.gnu.org/licenses/>.
 
-    Copyright 2017-2019 Telegram Systems LLP
+    Copyright 2017-2020 Telegram Systems LLP
 */
 #include "td/utils/Random.h"
 
@@ -166,10 +166,10 @@ double Random::fast(double min, double max) {
 Random::Xorshift128plus::Xorshift128plus(uint64 seed) {
   auto next = [&]() {
     // splitmix64
-    seed += static_cast<uint64>(0x9E3779B97F4A7C15);
+    seed += static_cast<uint64>(0x9E3779B97F4A7C15ull);
     uint64 z = seed;
-    z = (z ^ (z >> 30)) * static_cast<uint64>(0xBF58476D1CE4E5B9);
-    z = (z ^ (z >> 27)) * static_cast<uint64>(0x94D049BB133111EB);
+    z = (z ^ (z >> 30)) * static_cast<uint64>(0xBF58476D1CE4E5B9ull);
+    z = (z ^ (z >> 27)) * static_cast<uint64>(0x94D049BB133111EBull);
     return z ^ (z >> 31);
   };
   seed_[0] = next();
